@@ -2,6 +2,8 @@ import express from "express";
 
 const app = express();
 
+app.use(express.json());
+
 const PORT = process.env.PORT || 3000;
 
 const mockUser = [
@@ -47,6 +49,20 @@ app.get("/api/users/:id", (req, res) => {
   const findUser = mockUser.find((user) => user.id === parsedId);
   if (!findUser) return res.sendStatus(404);
   return res.send(findUser);
+});
+
+app.post("/api/users", (req, res) => {
+  // console.log(req.body);
+  const { body } = req;
+
+  const newUser = {
+    id: mockUser[mockUser.length - 1].id + 1,
+    ...body,
+  };
+
+  mockUser.push(newUser);
+
+  return res.status(201).send(newUser);
 });
 
 app.listen(PORT, () => {
