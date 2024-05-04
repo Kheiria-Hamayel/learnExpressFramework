@@ -15,15 +15,46 @@ const mockUser = [
   { id: 6, username: "lana", displayName: "Lana" },
 ];
 
+// next calling the next function after the middleware function
+const loggingMiddleWare = (req, res, next) => {
+  console.log(`${req.method} - ${req.url}`);
+  next();
+};
+
+const resolveUserById = (req, res, next) => {
+  const {
+    // body, it is not used so no need for it
+    params: { id },
+  } = req;
+  const parsedId = parseInt(id);
+  if (isNaN(parsedId)) return res.send(400);
+
+  const findUserIndex = mockUser.findIndex((user) => user.id === parsedId);
+  if (findUserIndex === -1) return res.sendStatus(404);
+  //To pass the found user by using the following
+  // attach data
+  req.findUserIndex = findUserIndex;
+  next();
+};
+
+// app.use(loggingMiddleWare);
+
 //Two param
 // 1- path
 // 2- request handler
 // 3- req => request object (request property all the stuff)
 // 4- res => response object (the response u want
 // to return back to clinet)
-app.get("/", (req, res) => {
-  res.status(200).send({ msg: "Hello!" });
-});
+app.get(
+  "/",
+  (req, res, next) => {
+    console.log(`${req.method} - ${req.url}`);
+    next();
+  },
+  (req, res) => {
+    res.status(200).send({ msg: "Hello!" });
+  }
+);
 
 app.get("/api/users", (req, res) => {
   console.log(req.query);
@@ -38,15 +69,10 @@ app.get("/api/users", (req, res) => {
   return res.send(mockUser);
 });
 
-app.get("/api/users/:id", (req, res) => {
-  console.log(req.params); // /:id, maybe can have multiple /:id/:username
+app.get("/api/users/:id", resolveUserById, (req, res) => {
+  const { findUserIndex } = req;
 
-  // validation if id is vaild numeric string
-
-  const parsedId = parseInt(req.params.id);
-  if (isNaN(parsedId)) return res.status(400).send({ msg: "Bad request" });
-
-  const findUser = mockUser.find((user) => user.id === parsedId);
+  const findUser = mockUser[findUserIndex];
   if (!findUser) return res.sendStatus(404);
   return res.send(findUser);
 });
@@ -64,46 +90,20 @@ app.post("/api/users", (req, res) => {
   return res.status(201).send(newUser);
 });
 
-app.put("/api/users/:id", (req, res) => {
-  const {
-    body,
-    params: { id },
-  } = req;
-  const parsedId = parseInt(id);
-  if (isNaN(parsedId)) return res.send(400);
-
-  const findUserIndex = mockUser.findIndex((user) => user.id === parsedId);
-  if (findUserIndex === -1) return res.sendStatus(404);
-
-  mockUser[findUserIndex] = { id: parsedId, ...body };
+app.put("/api/users/:id", resolveUserById, (req, res) => {
+  const { body } = req;
+  mockUser[req.findUserIndex] = { id: mockUser[req.findUserIndex].id, ...body };
   return res.sendStatus(204);
 });
 
-app.patch("/api/users/:id", (req, res) => {
-  const {
-    body,
-    params: { id },
-  } = req;
-  const parsedId = parseInt(id);
-  if (isNaN(parsedId)) return res.send(400);
-
-  const findUserIndex = mockUser.findIndex((user) => user.id === parsedId);
-  if (findUserIndex === -1) return res.sendStatus(404);
-
+app.patch("/api/users/:id", resolveUserById, (req, res) => {
+  const { body, findUserIndex } = req;
   mockUser[findUserIndex] = { ...mockUser[findUserIndex], ...body };
   return res.sendStatus(204);
 });
 
-app.delete("/api/users/:id", (req, res) => {
-  const {
-    params: { id },
-  } = req;
-
-  const parsedId = parseInt(id);
-  if (isNaN(parsedId)) return res.send(400);
-
-  const findUserIndex = mockUser.findIndex((user) => user.id === parsedId);
-  if (findUserIndex === -1) return res.sendStatus(404);
+app.delete("/api/users/:id", resolveUserById, (req, res) => {
+  const { findUserIndex } = req;
 
   mockUser.splice(findUserIndex, 1);
 
